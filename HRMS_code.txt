@@ -1,0 +1,206 @@
+HRMS code file
+
+AccountController.cs
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Data.Entity.Core.Objects;
+using System.Web.Mvc;
+using HRMS.Models;
+
+namespace HRMS.Controllers
+{
+    public class AccountController : Controller
+    {
+        private HRMSEntities objHRMSEntities = new HRMSEntities();
+        // GET: Registration
+        public ActionResult Index()
+        {
+            return View();
+        }
+        [HttpGet]
+        public ActionResult Register()
+        {
+            return View();
+        }
+
+        [HttpPost]
+        public ActionResult Register(Models.Emp_Register employee)
+        {
+            if (ModelState.IsValid)
+            {
+                using (var context = new HRMSEntities())
+                {
+                    context.RegNewEmp(employee.EmpID, employee.FName, employee.LName, employee.EMail, employee.Pwd);
+                }
+            }
+                return View();
+        }
+        //public static int CheckEmpIDAvailability(int EmpID)
+        //{
+        //    using (var context = new HRMSEntities())
+        //    {
+        //       return (int)context.spCheckEmpIDAvailability(EmpID).FirstOrDefault();
+        //    }
+        //}
+        public JsonResult CheckEmpIDAvailability(int EmpID)
+        {
+            using (var context = new HRMSEntities())
+            {
+                int a=(int)context.spCheckEmpIDAvailability(EmpID).FirstOrDefault();
+                return Json(a, JsonRequestBehavior.AllowGet);
+            }
+        }
+    }
+}
+
+Register.cs
+
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.ComponentModel.DataAnnotations;
+
+namespace HRMS.Models
+{
+    public class Register
+    {
+        [Required]
+        [Display(Name ="Employee ID")]
+        public int EmpID { get; set; }
+
+        [Required]
+        public string FName { get; set; }
+
+        [Required]
+        public string LName { get; set; }
+
+        [Required]
+        public string EMail { get; set; }
+
+        [Required]
+        public string Pwd { get; set; }
+    }
+}
+
+
+@model HRMS.Models.Register
+@{
+    ViewBag.Title = "Register";
+}
+
+<h2>Register</h2>
+@using (Html.BeginForm())
+{
+    @Html.AntiForgeryToken()
+    <table>
+        <tr>
+            <td>
+                @Html.LabelFor(model => model.EmpID)
+                @Html.TextBoxFor(model => model.EmpID, new { @id = "EmpID", @onblur = "checkEmpID()" })
+                @Html.ValidationMessageFor(model => model.EmpID)
+                <span id="spnMsg"></span>
+            </td>
+            <td>
+                @Html.LabelFor(model => model.FName)
+                @Html.EditorFor(model => model.FName)
+                @Html.ValidationMessageFor(model => model.FName)
+            </td>
+        </tr>
+        <tr>
+            <td>
+                @Html.LabelFor(model => model.LName)
+                @Html.EditorFor(model => model.LName)
+                @Html.ValidationMessageFor(model => model.LName)
+            </td>
+            <td>
+                @Html.LabelFor(model => model.EMail)
+                @Html.EditorFor(model => model.EMail)
+                @Html.ValidationMessageFor(model => model.EMail)
+            </td>
+        </tr>
+        <tr>
+            <td>
+                @Html.LabelFor(model => model.Pwd)
+                @Html.PasswordFor(model => model.Pwd)
+                @Html.ValidationMessageFor(model => model.Pwd)
+            </td>
+        </tr>
+        <tr><td><button id="submitButton" type="submit">Submit</button></td></tr>
+    </table>
+}
+@section Scripts {
+    @Scripts.Render("~/bundles/jqueryval")
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
+    <script type="text/javascript">
+        function checkEmpID() {
+            var chk = $('#EmpID').val().trim();
+            alert(chk);
+            $.ajax({
+                type: "POST",
+                async: true,
+                url: '@Url.Action("CheckEmpIDAvailability")',
+                data: '{ EmpID: ' + chk + ' }',
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function (response) {
+                    if (response != "0") {
+                        $("#spnMsg").html('Employee ID has already been taken');
+                        $("#spnMsg").removeClass("success").addClass("failure");
+                        $("#btnRegister").prop('disabled', true);
+
+                    }
+                    else {
+                        $("#spnMsg").html('Available');
+                        $("#spnMsg").removeClass("failure").addClass("success");
+                        $("#btnRegister").prop('disabled', false);
+                    }
+                }
+            });
+        }
+
+    </script>
+    @Scripts.Render("~/bundles/jqueryval")
+}
+
+Webconfig
+
+<connectionStrings>
+    <add name="HRMSEntities" connectionString="metadata=res://*/Models.RegModel.csdl|res://*/Models.RegModel.ssdl|res://*/Models.RegModel.msl;provider=System.Data.SqlClient;provider connection string=&quot;data source=DESKTOP-39V3KB9;initial catalog=HRMS;integrated security=True;MultipleActiveResultSets=True;App=EntityFramework&quot;" providerName="System.Data.EntityClient" />
+  </connectionStrings>
+
+SQL
+
+CREATE PROCEDURE spCheckEmpIDAvailability
+(
+            @EmpID int
+)
+AS
+BEGIN
+            SELECT COUNT(*) FROM Emp_Register WHERE EmpID = @EmpID        
+END
+
+exec spCheckEmpIDAvailability 304
+
+
+
+ALTER PROCEDURE [dbo].[RegNewEmp]
+	(@EmpID int,
+	@FName varchar(50),
+	@LName varchar(50),
+	@EMail varchar(50),
+	@Pwd varchar(50))
+AS
+BEGIN
+	-- SET NOCOUNT ON added to prevent extra result sets from
+	-- interfering with SELECT statements.
+	SET NOCOUNT ON;
+
+    -- Insert statements for procedure here
+	INSERT into Emp_Register (EmpID, FName, LName, EMail, Pwd)
+	values (@EmpID, @FName,	@LName,	@EMail,	@Pwd)
+END
